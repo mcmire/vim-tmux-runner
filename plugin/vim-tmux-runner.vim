@@ -155,9 +155,20 @@ function! s:Strip(string)
     return substitute(a:string, '^\s*\(.\{-}\)\s*\n\?$', '\1', '')
 endfunction
 
-function! s:SendTmuxCommand(command)
+function! s:SendTmuxCommand(command, ...)
+    if !exists("a:1")
+      let opts = { "async": 0 }
+    else
+      let opts = a:1
+    endif
+
     let prefixed_command = "tmux " . a:command
-    return s:Strip(system(prefixed_command))
+
+    if opts["async"] && has("nvim")
+      call jobstart(prefixed_command)
+    else
+      return s:Strip(system(prefixed_command))
+    endif
 endfunction
 
 function! s:TargetedTmuxCommand(command, target_pane)
@@ -167,7 +178,7 @@ endfunction
 function! s:_SendKeys(keys)
     let targeted_cmd = s:TargetedTmuxCommand("send-keys", s:runner_pane)
     let full_command = join([targeted_cmd, a:keys])
-    call s:SendTmuxCommand(full_command)
+    call s:SendTmuxCommand(full_command, { "async": 1 })
 endfunction
 
 function! s:SendKeys(keys)
